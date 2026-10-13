@@ -1,0 +1,24 @@
+# ============================================================
+# Starbucks AI Barista Assistant — Python Requirements
+# ============================================================
+
+# Web Framework
+flask>=3.0.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# LLM Provider (Groq)
+groq>=0.9.0
+
+# Vector Embeddings
+sentence-transformers>=3.0.0
+
+# Vector Database
+chromadb>=0.5.0
+
+# Text Chunking
+langchain-text-splitters>=0.2.0
+
+# HTTP requests (used by some dependencies)
+requests>=2.31.0
