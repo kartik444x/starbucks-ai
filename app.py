@@ -23,10 +23,10 @@ import sys
 import json
 import time
 import chromadb
+from chromadb.utils import embedding_functions
 from flask import Flask, request, jsonify, render_template, Response, stream_with_context
 from flask_cors import CORS
 from dotenv import load_dotenv
-from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from groq import Groq
 
@@ -94,36 +94,39 @@ def chunk_knowledge_base(text):
 # ======================================================================================
 def initialize_vector_store(chunks, db_path="./chroma_starbucks_db"):
     """
-    Generates 384-dimensional vector embeddings for each chunk using SentenceTransformers
-    and stores them inside a ChromaDB persistent collection.
+    Generates 384-dimensional vector embeddings for each chunk using ChromaDB's
+    built-in ONNX embedding function (all-MiniLM-L6-v2 via ONNX Runtime).
+    Much lighter on memory than PyTorch-based SentenceTransformers.
     Re-uses existing index if already populated.
     """
-    print("\n🧠 STEP 3: Loading local embedding model ('all-MiniLM-L6-v2')...")
-    emb_model = SentenceTransformer('all-MiniLM-L6-v2')
+    print("\n🧠 STEP 3: Loading ONNX embedding model ('all-MiniLM-L6-v2')...")
+    emb_fn = embedding_functions.DefaultEmbeddingFunction()
 
     print(f"💾 Initializing ChromaDB vector store at '{db_path}'...")
     client = chromadb.PersistentClient(path=db_path)
 
-    # Get or create collection for Starbucks
-    col = client.get_or_create_collection(name="starbucks_barista_kb")
+    # Get or create collection with built-in embedding function
+    col = client.get_or_create_collection(
+        name="starbucks_barista_kb",
+        embedding_function=emb_fn
+    )
 
     if col.count() == 0:
         print(f"⏳ Embedding and indexing {len(chunks)} chunks into ChromaDB...")
         ids = [f"chunk_{i}" for i in range(len(chunks))]
-        embeddings = emb_model.encode(chunks).tolist()
         metadatas = [{"source": "starbucks_knowledge_base.txt", "chunk_id": i} for i in range(len(chunks))]
 
+        # ChromaDB will auto-embed the documents using the ONNX embedding function
         col.add(
             ids=ids,
             documents=chunks,
-            embeddings=embeddings,
             metadatas=metadatas
         )
         print(f"✅ Indexed {col.count()} chunks into ChromaDB successfully!")
     else:
         print(f"✅ Found existing vector collection with {col.count()} indexed chunks.")
 
-    return col, emb_model
+    return col, emb_fn
 
 
 # ======================================================================================
@@ -131,12 +134,11 @@ def initialize_vector_store(chunks, db_path="./chroma_starbucks_db"):
 # ======================================================================================
 def retrieve_relevant_context(user_query, top_k=4):
     """
-    Converts user query into embedding, performs cosine similarity search in ChromaDB,
-    and returns top K matching chunks combined as context for LLM.
+    ChromaDB auto-embeds the query text using its built-in embedding function,
+    performs cosine similarity search, and returns top K matching chunks.
     """
-    query_vector = embedding_model.encode([user_query]).tolist()
     results = collection.query(
-        query_embeddings=query_vector,
+        query_texts=[user_query],
         n_results=top_k
     )
     retrieved_docs = results.get("documents", [[]])[0]
