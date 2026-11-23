@@ -2,8 +2,10 @@
 # Starbucks AI Barista Assistant — Python Requirements
 # ============================================================
 
-# Web Framework
+# Web Framework & Production WSGI Server
 flask>=3.0.0
+flask-cors>=4.0.0
+gunicorn>=21.2.0
 
 # Environment variables
 python-dotenv>=1.0.0
