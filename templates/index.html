@@ -477,10 +477,9 @@
 
 <script>
   /* ===== CONFIGURATION ===== */
-  // Auto-detect API base: if opened via VS Code Live Server (e.g. port 5500), route requests to Flask backend at port 5000
-  const API_BASE = (window.location.port !== '5000' && window.location.protocol.startsWith('http'))
-    ? `${window.location.protocol}//${window.location.hostname}:5000`
-    : '';
+  // Auto-detect API base: only route to :5000 when testing locally on Live Server (e.g. localhost:5500)
+  const isLocalLiveServer = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '5000' && window.location.port !== '';
+  const API_BASE = isLocalLiveServer ? `http://${window.location.hostname}:5000` : '';
 
   const QUICK_REPLIES = [
     "☕ Popular drinks?", "🧊 Best cold drinks?", "🌱 Vegan options?",
